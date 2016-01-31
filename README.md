@@ -3,7 +3,10 @@ GPU Stats monitor
 
 A monitor for gpu basic stats. Currently work with nvidia proprietary driver only. Disclaimer: I'm new to programming, pull requests for cleaner code / faster / more features are welcomed.
 
-This program licensed is under GNU GPLv3. Read license file for more info.
+Dependinces:
+gtk+3, python3, python3-gi.
+
+This program licensed is under GNU GPLv3. Read the license file for more info.
 
 This program uses a slightly modified version of "Python bindings for the NVML library" to work with python3.
 Here's the license for the file:
