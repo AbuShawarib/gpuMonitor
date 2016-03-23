@@ -1,12 +1,16 @@
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GObject
+
 import pynvml
+import cairo
 
 class MonitorWindow(Gtk.Window):
 
     def __init__(self):
         Gtk.Window.__init__(self, title="GPU Monitor")
         self.set_border_width(12)
-        self.set_resizable(False)
+        #self.set_resizable(False)
         self.set_icon_name("utilities-system-monitor")
         self.set_position(Gtk.WindowPosition.CENTER)
         
@@ -19,7 +23,23 @@ class MonitorWindow(Gtk.Window):
         
         self.init()
         
+        self.util_graph = Gtk.DrawingArea()
+        self.util_graph.set_size_request(200, 110)
+        self.util_graph.connect("draw", self.draw_graph, self.util_history, 
+        [0, 0.5, 1])
+        
+        self.temp_graph = Gtk.DrawingArea()
+        self.temp_graph.set_size_request(200, 110)
+        self.temp_graph.connect("draw", self.draw_graph, self.temp_history ,
+        [1, 0.25, 0])
+        
+        
+        
         #util_page
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        vbox.pack_start(self.util_graph, True, True, 0)
+        vbox.pack_start(self.temp_graph, True, True, 0)
+        util_page.pack_start(vbox, True, True, 0)
         for box in self.gpu_boxes:
             util_page.pack_start(box, True, True, 0)
         util_page.pack_start(self.cpu_box, True, True, 0)
@@ -87,7 +107,13 @@ class MonitorWindow(Gtk.Window):
             
             self.gpu_prog_bars[i*6].set_text("GPU: %d%%" % util.gpu)
             self.gpu_prog_bars[i*6].set_fraction(util.gpu / 100)
+            ########
+            self.util_history.append(util.gpu)
+            self.util_graph.queue_draw()
             
+            self.temp_history.append(temp)
+            self.temp_graph.queue_draw()
+            ########
             self.gpu_prog_bars[i*6 +1].set_text("Memory Utilization: %d%%" % util.memory)
             self.gpu_prog_bars[i*6 +1].set_fraction(util.memory / 100)
             
@@ -114,7 +140,10 @@ class MonitorWindow(Gtk.Window):
         
         for p in procs:
             pid = p.pid
-            path = pynvml.nvmlSystemGetProcessName(p.pid).decode('utf-8')
+            try:
+                path = pynvml.nvmlSystemGetProcessName(p.pid).decode('utf-8')
+            except:
+                self.exit()
             if (p.usedGpuMemory == None):
                 mem = 0
             else:
@@ -126,7 +155,9 @@ class MonitorWindow(Gtk.Window):
 # init
 #
     def init(self):
-
+        
+        self.util_history = []
+        self.temp_history = []
         pynvml.nvmlInit()
         self.gpu_handles = []
         self.deviceCount = pynvml.nvmlDeviceGetCount()
@@ -219,6 +250,64 @@ class MonitorWindow(Gtk.Window):
         column_mem = Gtk.TreeViewColumn("Memory (MiB)", renderer_mem, text=2)
         column_mem.set_resizable(True)
         self.tree.append_column(column_mem)
+    
+    def draw_util_graph(self, widget, cr):
+        cr.set_source_rgb(0, 0.5, 1)
+        cr.set_line_width(1.0)
+        
+        l = len(self.util_history)
+        
+        h = widget.get_allocated_height()
+        w = widget.get_allocated_width()
+
+        if l > 20:
+            del self.util_history[0:-21]
+            l = len(self.util_history)
+        
+        cr.move_to(0, h - (self.util_history[0] * h/100))
+        for i in range(1, l):
+            cr.line_to((w/20)*i, h - (self.util_history[i] * h/100) )
+        
+        cr.stroke()
+        #
+        cr.set_source_rgb(0.6, 0.6, 0.6)
+        cr.set_line_width(0.5)
+        
+        for i in range(0, h, int(h/10)):
+            cr.move_to(0, i)
+            cr.line_to(w, i)
+            cr.stroke()
+        #
+        return True
+    
+    def draw_graph(self, widget, cr, history, color):
+        
+        l = len(history)
+        
+        h = widget.get_allocated_height()
+        w = widget.get_allocated_width()
+        #
+        cr.set_source_rgb(color[0], color[1], color[2])
+        cr.set_line_width(1.5)
+        if l > 20:
+            del history[0:-21]
+            l = len(history)
+        
+        cr.move_to(0, h - history[0] * (h/100))
+        for i in range(0, l):
+            cr.line_to((w/20)*i, h - (history[i] * h/100) )
+        
+        cr.stroke()
+        #
+        cr.set_source_rgb(0.6, 0.6, 0.6)
+        cr.set_line_width(0.5)
+        
+        for i in range(0, h, int(h/10)):
+            cr.move_to(0, i)
+            cr.line_to(w, i)
+            cr.stroke()
+        #
+        return True
     
     def exit(self, widget, ev):
         pynvml.nvmlShutdown()
