@@ -1,7 +1,6 @@
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GObject
-
 import pynvml
 import cairo
 
@@ -32,8 +31,6 @@ class MonitorWindow(Gtk.Window):
         self.temp_graph.set_size_request(200, 110)
         self.temp_graph.connect("draw", self.draw_graph, self.temp_history ,
         [1, 0.25, 0])
-        
-        
         
         #util_page
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -68,7 +65,6 @@ class MonitorWindow(Gtk.Window):
         
         try:
             stat = open("/proc/stat")
-            
             self.statlines = stat.read().splitlines()[1:-1]
             stat.close()
             
@@ -250,36 +246,7 @@ class MonitorWindow(Gtk.Window):
         column_mem = Gtk.TreeViewColumn("Memory (MiB)", renderer_mem, text=2)
         column_mem.set_resizable(True)
         self.tree.append_column(column_mem)
-    
-    def draw_util_graph(self, widget, cr):
-        cr.set_source_rgb(0, 0.5, 1)
-        cr.set_line_width(1.0)
-        
-        l = len(self.util_history)
-        
-        h = widget.get_allocated_height()
-        w = widget.get_allocated_width()
 
-        if l > 20:
-            del self.util_history[0:-21]
-            l = len(self.util_history)
-        
-        cr.move_to(0, h - (self.util_history[0] * h/100))
-        for i in range(1, l):
-            cr.line_to((w/20)*i, h - (self.util_history[i] * h/100) )
-        
-        cr.stroke()
-        #
-        cr.set_source_rgb(0.6, 0.6, 0.6)
-        cr.set_line_width(0.5)
-        
-        for i in range(0, h, int(h/10)):
-            cr.move_to(0, i)
-            cr.line_to(w, i)
-            cr.stroke()
-        #
-        return True
-    
     def draw_graph(self, widget, cr, history, color):
         
         l = len(history)
